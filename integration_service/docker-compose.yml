@@ -6,27 +6,35 @@ services:
     ports:  
       - "9000:9000"  
     environment:  
-      - API_PORT=9000  
       - ATOMSPACE_API_URL=http://atomspace-api:8000  
       - NEURAL_MINER_URL=http://neural-miner:5000  
-      - ANNOTATION_SERVICE_URL=http://annotation-service:5800/annotation/load  
+      - SHARED_VOLUME_PATH=/shared/output  
     volumes:  
       - shared_output:/shared/output  
-      - csv_cache:/app/cache  
+      - ./cache:/app/cache  
     depends_on:  
       - atomspace-api  
       - neural-miner  
+    networks:  
+      - integration-network  
   
   atomspace-api:  
-    build: ./submodules/custom-atomspace-builder  
+    image: abdum1964/atomspace-api:latest  
     volumes:  
       - shared_output:/shared/output  
+    networks:  
+      - integration-network  
   
   neural-miner:  
     build: ./submodules/neural-subgraph-miner  
     volumes:  
       - shared_output:/shared/output  
+    networks:  
+      - integration-network  
   
 volumes:  
   shared_output:  
-  csv_cache:
+  
+networks:  
+  integration-network:  
+    driver: bridge
