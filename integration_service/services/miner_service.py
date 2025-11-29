@@ -2,7 +2,7 @@
 import httpx  
 import os  
 import asyncio  
-from typing import Dict, Any, List  
+from typing import Dict, Any  
 from ..config.settings import settings  
   
 class MinerService:  

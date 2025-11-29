@@ -3,7 +3,6 @@ import os
 import uuid  
 import httpx  
 import tempfile  
-import shutil  
 import json  
 from typing import Dict, Any  
 from .miner_service import MinerService  
@@ -29,7 +28,7 @@ class OrchestrationService:
         job_id = str(uuid.uuid4())  
           
         try:  
-            # Step 1: Generate NetworkX using AtomSpace Builder with full config  
+            # Generate NetworkX using AtomSpace Builder  
             networkx_result = await self._generate_networkx(  
                 csv_file_path, job_id, config, schema_json, tenant_id, session_id  
             )  
@@ -44,6 +43,23 @@ class OrchestrationService:
                 "statistics": motifs_result['statistics']  
             }  
               
+        except Exception as e:  
+            return {"job_id": job_id, "status": "error", "error": str(e)}  
+      
+    async def process_selected_motif(  
+        self,   
+        job_id: str,   
+        motif_index: int,   
+        tenant_id: str = "default"  
+    ) -> Dict[str, Any]:  
+        """Process user-selected motif."""  
+        try:    
+            return {  
+                "job_id": job_id,  
+                "status": "motif_selected",  
+                "motif_index": motif_index,  
+                "message": "Motif selection received. Ready for Phase 2 processing."  
+            }  
         except Exception as e:  
             return {"job_id": job_id, "status": "error", "error": str(e)}  
       

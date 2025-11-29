@@ -8,7 +8,7 @@ from ..config.settings import settings
 router = APIRouter()  
 orchestration_service = OrchestrationService()  
   
-@router.post("/api/execute")  
+@router.post("/execute")  
 async def execute_pipeline(  
     file: UploadFile = File(...),  
     config: str = Form(...),  
@@ -38,4 +38,21 @@ async def execute_pipeline(
         return result  
     finally:  
         # Cleanup temporary file  
-        os.unlink(tmp_file_path)
+        os.unlink(tmp_file_path)  
+  
+@router.post("/select-motif")  
+async def select_motif(  
+    job_id: str = Form(...),  
+    motif_index: int = Form(...),  
+    tenant_id: str = Form("default")  
+):  
+    """User selects a motif for processing."""  
+    try:  
+        result = await orchestration_service.process_selected_motif(  
+            job_id=job_id,  
+            motif_index=motif_index,  
+            tenant_id=tenant_id  
+        )  
+        return result  
+    except Exception as e:  
+        raise HTTPException(status_code=500, detail=str(e))
