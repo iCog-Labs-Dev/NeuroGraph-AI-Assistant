@@ -1,8 +1,8 @@
 """FastAPI application for Integration Service."""  
 from fastapi import FastAPI  
 from fastapi.middleware.cors import CORSMiddleware  
-from api.pipeline import router  
-from config.settings import settings  
+from .api.pipeline import router  
+from .config.settings import settings  
   
 app = FastAPI(  
     title="NeuroGraph Integration Service",  
