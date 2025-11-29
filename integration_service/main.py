@@ -1,12 +1,13 @@
 """FastAPI application for Integration Service."""  
 from fastapi import FastAPI  
 from fastapi.middleware.cors import CORSMiddleware  
-from .api.pipeline import router  
-from .config.settings import settings  
+from api.pipeline import router  
+from config.settings import settings  
   
 app = FastAPI(  
     title="NeuroGraph Integration Service",  
-    description="Orchestration service for Neural Subgraph Mining pipeline"  
+    description="Orchestration service for Neural Subgraph Mining pipeline",  
+    version="1.0.0"  
 )  
   
 # CORS middleware  
@@ -19,11 +20,12 @@ app.add_middleware(
 )  
   
 # Include routers  
-app.include_router(router)  
+app.include_router(router, prefix="/api")  
   
-@app.get("/")  
-async def root():  
-    return {"message": "NeuroGraph Integration Service API"}  
+@app.get("/health")  
+async def health_check():  
+    """Health check endpoint."""  
+    return {"status": "healthy", "service": "integration-service"}  
   
 if __name__ == "__main__":  
     import uvicorn  
