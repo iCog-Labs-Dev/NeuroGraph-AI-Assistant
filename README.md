@@ -4,392 +4,132 @@
 
 The NeuroGraph AI Assistant is a **two-step pipeline** for discovering patterns and motifs in graph data:
 
-1. **Step 1: Generate Graph** - Upload CSV files and generate a NetworkX graph (returns `job_id`)
-2. **Step 2: Mine Patterns** - Use the `job_id` to discover patterns with custom configuration
+1.  **Step 1: Generate Graph** - Upload CSV files and generate a NetworkX graph (returns `job_id`).
+2.  **Step 2: Mine Patterns** - Use the `job_id` to discover patterns with custom configuration.
 
 ### System Components
 
-- **Custom AtomSpace Builder**: Converts CSV data into NetworkX graphs (directed or undirected)
-- **Neural Subgraph Miner**: Discovers motifs and patterns using configurable mining algorithms
-- **Integration Service**: Orchestrates the workflow and provides REST APIs (Port 9000)
-
-### How It Works
-
-```
-User → Upload CSV → Generate Graph → Get job_id → Mine Patterns → Get Results
-         (Step 1)                        ↓           (Step 2)
-                                    Save job_id!
-```
+-   **Custom AtomSpace Builder**: Converts CSV data into NetworkX graphs.
+-   **Neural Subgraph Miner**: Discovers motifs and patterns.
+-   **Integration Service**: Orchestrates the workflow and provides REST APIs.
 
 ---
 
-##  Project Structure
+##  Complete Setup Instructions (Step-by-Step)
 
-```
-NeuroGraph-AI-Assistant/
-├── .gitmodules                          # Git submodule configuration
-├── docker-compose.yml                   # Integration service orchestration
-├── .env                                 # Environment variables
-├── integration_service/                 # Main orchestration service
-│   ├── main.py                          # FastAPI application entry
-│   ├── config/settings.py               # Configuration management
-│   ├── api/pipeline.py                  # API endpoints
-│   ├── services/                        # Business logic
-│   │   ├── orchestration_service.py     # Pipeline coordinator
-│   │   └── miner_service.py             # Neural miner client
-│   └── output/                          # Local output directory
-│       └── {job_id}/
-│           ├── results/
-│           │   ├── patterns.json        # Discovered patterns
-│           │   └── patterns.pkl
-│           └── plots/
-│               └── cluster/             # Pattern visualizations
-└── submodules/
-    ├── custom-atomspace-builder/        # Graph generation service
-    │   └── output/                      # Shared volume
-    │       └── {job_id}/
-    │           ├── networkx_graph.pkl
-    │           └── networkx_metadata.json  # Contains graph_type
-    └── neural-subgraph-matcher-miner/   # Motif discovery service
-```
+Follow these steps precisely to set up the system on a new server or local machine.
 
----
+### Prerequisites
+-   **Docker** and **Docker Compose** installed.
+-   **Git** installed.
 
-##  Complete Setup Instructions
-
-### Step 1: Clone Repository with Submodules
+### Step 1: Clone the Repository
+Clone the repository and ensure submodules are downloaded.
 
 ```bash
 # Clone the main repository
 git clone https://github.com/NeuroGraph-AI-Assistant.git
 cd NeuroGraph-AI-Assistant
 
-# Initialize and update submodules
+# Initialize and update submodules (CRITICAL STEP)
 git submodule update --init --recursive
 ```
 
-### Step 2: Set up Custom AtomSpace Builder
+### Step 2: Configure Environment Variables
+The system uses a **single configuration file** in the root directory.
+
+1.  Copy the example `env` file:
+    ```bash
+    cp .env.example .env
+    ```
+
+2.  Open `.env` in a text editor (e.g., `nano .env`) and set your keys:
+    *   **LLM_API_KEY**: Your OpenAI or Anthropic key.
+    *   **NEO4J_PASSWORD**: Default is `atomspace123`.
+    *   **(Optional) Ports**: Change `ATOMSPACE_PORT` here if port 8000 is busy.
+   
+
+### Step 3: Prepare Submodule Build (Build Fix)
+*Note: The AtomSpace Builder requires a local `.env` file to exist during the build process.*
+
+Run this command to create the necessary dummy file:
 
 ```bash
-# Navigate to the Custom AtomSpace Builder
-cd submodules/custom-atomspace-builder
-
-# Copy environment configuration
-cp example.env .env
-
-# Build and start all services (development mode)
-make build-dev
-make up-dev
-
-# Verify services are running
-make logs-dev
+# Create a dummy .env file for the submodule build
+cp .env.example submodules/custom-atomspace-builder/.env
 ```
 
-**Expected Output:** You should see three services starting:
-- `atomspace-api-dev` on port 8000
-- `neo4j` on ports 7474/7687
-- `hugegraph` on ports 8080/8182
-
-### Step 3: Set up Neural Subgraph Miner
+### Step 4: Build and Start the System
+Run the unified Docker Compose command.
 
 ```bash
-# Navigate to Neural Miner
-cd ../neural-subgraph-matcher-miner
-
-# Build the Docker image
-docker build -t neural-miner:latest .
-
-# Verify the image was built
-docker images | grep neural-miner
+# Build and start in detached mode (background)
+docker compose up --build -d
 ```
 
-### Step 4: Configure Integration Service
-
+### Step 5: Verify Services
+Check the status of the containers:
 ```bash
-# Navigate back to project root
-cd ../..
-
-# Verify docker-compose.yml has correct environment variables
-cat docker-compose.yml
+docker compose ps
 ```
+**Expected Output:** All 5 services (integration-service, neural-miner, atomspace-api, neo4j, hugegraph) should be "Up".
 
-**Important Environment Settings** (in docker-compose.yml):
+---
 
-```yaml
-environment:
-  - API_PORT=9000
-  - ATOMSPACE_API_URL=http://atomspace-api-dev:8000
-  - NEURAL_MINER_URL=http://neural-miner:5000
-  - ATOMSPACE_TIMEOUT=600
-  - MINER_TIMEOUT=1800
-```
+## Troubleshooting & Common Errors
 
-### Step 5: Start Integration Service
-
+### 1. Error 500: "Name or service not known" (Annotation Service)
+**Issue:** The system defaults to looking for an optional "Annotation Service" that doesn't exist.
+**Fix:**
+Edit your `.env` file and make sure `ANNOTATION_SERVICE_URL` is empty.
 ```bash
-# Build and start the integration service
-docker-compose up -d --build
-
-# Check service status
-docker-compose ps
-
-# View logs
-docker-compose logs -f integration-service
+# Correct:
+ANNOTATION_SERVICE_URL=
+# Incorrect:
+ANNOTATION_SERVICE_URL=http://annotation-service:6000
 ```
+Then restart: `docker compose up -d`
 
-**Expected Output:**
-```
-NAME                                          STATUS
-neurograph-ai-assistant-integration-service   Up
-neurograph-ai-assistant-neural-miner          Up
-custom-atomspace-builder-atomspace-api-dev-1  Up
-custom-atomspace-builder-neo4j-1              Up
-custom-atomspace-builder-hugegraph-1          Up
+### 2. Error: "Bind for 0.0.0.0:8000 failed" (Port Conflict)
+**Issue:** Port 8000 is already used by another application (or an old version of this app).
+**Fix:**
+*   **Option A (Kill Old Process):** Run `sudo lsof -i :8000` to find the PID, then `sudo kill -9 <PID>`.
+*   **Option B (Change Port):** Edit `.env` and set `ATOMSPACE_PORT=8001`.
+
+### 3. Error: "Conflict. The container name ... is already in use"
+**Issue:** Old containers from manual runs are blocking the new ones.
+**Fix (The Nuclear Option):**
+```bash
+docker rm -f $(docker ps -aq)
+docker compose up --build -d
 ```
 
 ---
 
-##  Verification & Testing
-
-### Health Checks
-
-```bash
-# Check Integration Service (Port 9000)
-curl http://localhost:9000/health
-
-# Check Custom AtomSpace Builder (Port 8000)
-curl http://localhost:8000/api/health
-# Expected outputs:
-# {"status": "healthy", "service": "integration-service"}
-# {"status": "healthy"}
-```
-
----
-
-##  API Endpoints
+##  API Guidelines
 
 **Base URL:** `http://localhost:9000`
 
-### 1️ Generate NetworkX Graph
-
+### 1️ Step 1: Generate Graph
 **Endpoint:** `POST /api/generate-graph`
-
-**Purpose:** Upload CSV files and generate a NetworkX graph. Returns a `job_id` for use in Step 2.
-
-**Parameters:**
-
-| Parameter | Type | Required | Default | Description |
-|-----------|------|----------|---------|-------------|
-| `files` | File[] |  Yes | - | CSV files (nodes and edges) |
-| `config` | JSON String |  Yes | - | Graph configuration |
-| `schema_json` | JSON String |  Yes | - | Schema definition |
-| `writer_type` | String |  No | `networkx` | Writer type (networkx, metta, neo4j) |
-| `graph_type` | String |  No | `directed` | **Graph type: `directed` or `undirected`** |
-
-**Example:**
+Upload your CSV files to create a graph.
 
 ```bash
-curl -X POST "http://localhost:9000/api/generate-graph" -F "files=@data.csv" -F "files=@edges.csv" -F "config=$(cat config.json)" -F "schema_json=$(cat schema.json)" -F "writer_type=networkx" -F "graph_type=undirected"
+curl -X POST "http://localhost:9000/api/generate-graph" \
+  -F "files=@nodes.csv" \
+  -F "files=@edges.csv" \
+  -F "config=$(cat config.json)" \
+  -F "schema_json=$(cat schema.json)" \
+  -F "writer_type=networkx" \
+  -F "graph_type=directed"
 ```
 
-**Response:**
-
-```json
-{
-  "job_id": "abc-123-def-456",
-  "status": "success",
-  "networkx_file": "/shared/output/abc-123-def-456/networkx_graph.pkl"
-}
-```
-
-** Save the `job_id` - you'll need it for Step 2!**
-
----
-
-### 2️ Mine Patterns
-
+### 2️ Step 2: Mine Patterns
 **Endpoint:** `POST /api/mine-patterns`
-
-**Purpose:** Discover patterns in a previously generated graph using the `job_id` from Step 1. The `graph_type` is automatically detected from metadata!
-
-**Parameters:**
-
-| Parameter | Type | Required | Default | Description |
-|-----------|------|----------|---------|-------------|
-| `job_id` | String |  Yes | - | **Job ID from Step 1** |
-| `min_pattern_size` | Integer |  No | `5` | Minimum pattern size (nodes) |
-| `max_pattern_size` | Integer |  No | `10` | Maximum pattern size (nodes) |
-| `min_neighborhood_size` | Integer |  No | `5` | Minimum neighborhood size |
-| `max_neighborhood_size` | Integer |  No | `10` | Maximum neighborhood size |
-| `n_neighborhoods` | Integer | No | `2000` | Number of neighborhoods to sample |
-| `n_trials` | Integer |  No | `100` | Number of search trials |
-| `graph_type` | String |  No | `auto` | **Auto-detected from metadata** (can override) |
-| `search_strategy` | String |  No | `greedy` | Search strategy (greedy, mcts) |
-| `sample_method` | String | No | `tree` | Sampling method (tree, radial) |
-
-**Example (Minimal - uses defaults):**
+Use the `job_id` from Step 1.
 
 ```bash
-curl -X POST "http://localhost:9000/api/mine-patterns" -F "job_id=abc-123-def-456"
+curl -X POST "http://localhost:9000/api/mine-patterns" \
+  -F "job_id=abc-123" \
+  -F "min_pattern_size=3"
 ```
-
-**Example (Custom Configuration):**
-
-```bash
-curl -X POST "http://localhost:9000/api/mine-patterns" -F "job_id=abc-123-def-456" -F "min_pattern_size=3" -F "max_pattern_size=8" -F "n_neighborhoods=1000" -F "n_trials=50" -F "search_strategy=greedy"
-```
-
-**Response:**
-
-{
-  "job_id": "abc-123-def-456",
-  "status": "success",
-  "output_paths": {
-    "results": "./integration_service/output/abc-123-def-456/results",
-    "plots": "./integration_service/output/abc-123-def-456/plots"
-  },
-  "download_url": "http://localhost:9000/api/download-result?job_id=abc-123-def-456"
-}
-```
----
-
-### 3️. Download Results
-
-**Endpoint:** `GET /api/download-result`
-
-**Purpose:** Securely download results. Can download a specific file OR the entire job folder as a ZIP archive.
-
-**Parameters:**
-
-| Parameter | Type | Required | Description |
-|-----------|------|----------|-------------|
-| `job_id` | String | Yes | Job ID from Step 1 |
-| `filename` | String | No | Path to specific file. **If omitted, downloads the full job as ZIP.** |
-
-**Example:**
-
-```bash
-# Download the mined results 
-curl -O -J "http://localhost:9000/api/download-result?job_id=abc-123"
-
-# Download specific file
-curl -O "http://localhost:9000/api/download-result?job_id=abc-123&filename=results/patterns.json"
-```
-
----
-
-##  Common Operations
-
-### View Logs
-
-```bash
-# All services
-docker-compose logs -f
-
-# Specific service
-docker-compose logs -f integration-service
-docker-compose logs -f neural-miner
-
-# AtomSpace Builder
-cd submodules/custom-atomspace-builder
-make logs-dev
-```
-
-### Restart Services
-
-```bash
-# Restart all
-docker-compose restart
-
-# Restart specific service
-docker-compose restart integration-service
-
-# Restart AtomSpace Builder
-cd submodules/custom-atomspace-builder
-make down-dev
-make up-dev
-```
-
-### Stop Services
-
-```bash
-# Stop Integration Service and Neural Miner
-docker-compose down
-
-# Stop AtomSpace Builder
-cd submodules/custom-atomspace-builder
-make down-dev
-```
-
-### Rebuild After Code Changes
-
-```bash
-# Rebuild Integration Service
-docker-compose build integration-service
-docker-compose up -d integration-service
-
-# Rebuild Neural Miner
-docker-compose build neural-miner
-docker-compose up -d neural-miner
-
-# Rebuild all
-docker-compose build
-docker-compose up -d
-```
-
----
-
-##  Output Structure
-
-After successful pipeline execution, results are organized as:
-
-```
-./integration_service/output/{job_id}/
-├── results/
-│   ├── patterns.json          # Discovered patterns (JSON format)
-│   └── patterns.pkl            # Discovered patterns (Pickle format)
-└── plots/
-    └── cluster/
-        ├── pattern_1.png       # Pattern visualization (PNG)
-        ├── pattern_1.pdf       # Pattern visualization (PDF)
-        └── pattern_1.html      # Interactive visualization (HTML)
-```
-
-**Shared Volume (contains metadata):**
-
-```
-/shared/output/{job_id}/
-├── networkx_graph.pkl          # Generated NetworkX graph
-├── networkx_metadata.json      # Graph metadata (includes graph_type)
-├── results/
-└── plots/
-```
-
----
-
-##  Complete Workflow
-
-1. **User uploads CSV files** (nodes and edges) → **Step 1**
-2. **Integration Service** forwards to **AtomSpace Builder**
-3. **AtomSpace Builder** generates NetworkX graph with specified `graph_type`
-4. **System returns `job_id`** → User saves it
-5. **User submits `job_id` + mining config** → **Step 2**
-6. **Integration Service** reads `graph_type` from metadata (auto-detection)
-7. **Neural Miner** discovers patterns using the correct graph type
-8. **Integration Service** copies results to local directory
-9. **User accesses results** at `./integration_service/output/{job_id}/`
-
----
-
-##  Key Points
-
-- **Port 9000**: Integration Service (your main API)
-- **Port 8000**: AtomSpace Builder (internal)
-- **Port 5000**: Neural Miner (internal)
-
-- **Step 1**: Upload CSV → Get `job_id`
-- **Step 2**: Use `job_id` + mining config → Get results
-
-- **Graph Type**: Specified in Step 1, auto-detected in Step 2!
-
----

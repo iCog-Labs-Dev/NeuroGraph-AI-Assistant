@@ -56,7 +56,7 @@ services:
       dockerfile: Dockerfile
     container_name: atomspace-api
     ports:
-      - "${API_PORT:-8000}:8000"
+      - "${ATOMSPACE_PORT:-8000}:8000"
     environment:
       - API_PORT=8000
       - NEO4J_HOST=neo4j
@@ -111,7 +111,7 @@ services:
       - API_PORT=9000
       - ATOMSPACE_API_URL=http://atomspace-api-dev:8000
       - NEURAL_MINER_URL=http://neural-miner:5000
-      - ANNOTATION_SERVICE_URL=${ANNOTATION_SERVICE_URL:-http://annotation-service:6000}
+      - ANNOTATION_SERVICE_URL=${ANNOTATION_SERVICE_URL:-}
       - ATOMSPACE_TIMEOUT=${ATOMSPACE_TIMEOUT:-600}
       - MINER_TIMEOUT=${MINER_TIMEOUT:-1800}
       - ANNOTATION_TIMEOUT=${ANNOTATION_TIMEOUT:-300}
