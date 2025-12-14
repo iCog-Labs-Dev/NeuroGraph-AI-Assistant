@@ -2,6 +2,29 @@ version: '3.8'
 
 services:
   # --- Custom Atomspace Builder Services ---
+  annotation-tool:
+    build:
+      context: ./submodules/annotation-tool
+      dockerfile: dockerfile
+    container_name: annotation-tool
+    ports:
+      - "3000:3000"
+    environment:
+      # Internal URLs for SSR (Server-to-Server)
+      - ANNOTATION_URL=http://annotation-backend:8000
+      - LOADER_URL=http://atomspace-api-dev:8000
+      - INTEGRATION_URL=http://neurograph-ai-assistant-integration-service:9000
+      # Public URLs for the Browser (Client-to-Server)
+      - PUBLIC_ANNOTATION_URL=http://localhost:8001
+      - PUBLIC_LOADER_URL=http://localhost:8000
+      - PUBLIC_INTEGRATION_URL=http://localhost:9000
+    depends_on:
+      - annotation-backend
+      - integration-service
+    networks:
+      - neurograph-network
+    restart: always
+
   neo4j:
     image: neo4j:5.15-community
     container_name: neo4j-atomspace
@@ -128,6 +151,44 @@ services:
       - atomspace-api-dev
       - neural-miner
 
+# --- Annotation Query Backend  ---
+  annotation-backend:
+    build:
+      context: ./submodules/annotation-query-backend-general 
+      dockerfile: Dockerfile
+    container_name: annotation-backend
+    ports:
+      - "8001:8000" 
+    environment:
+      - APP_PORT=8000
+      - MONGO_URI=mongodb://mongodb:27017/annotation_db
+      - REDIS_URL=redis://redis:6379/0
+      - LLM_MODEL=${LLM_MODEL:-openai}
+      - OPENAI_API_KEY=${OPENAI_API_KEY:-}
+      - GEMINI_API_KEY=${GEMINI_API_KEY:-}
+    depends_on:
+      - mongodb
+      - redis
+    networks:
+      - neurograph-network
+    restart: always
+  mongodb:
+    image: mongo:latest
+    container_name: mongodb
+    volumes:
+      - mongo_data:/data/db
+    networks:
+      - neurograph-network
+    restart: always
+  redis:
+    image: redis:latest
+    container_name: redis
+    volumes:
+      - redis_data:/data
+    networks:
+      - neurograph-network
+    restart: always
+
 volumes:
   neo4j_data:
   neo4j_logs:
@@ -136,6 +197,8 @@ volumes:
   hugegraph_logs:
   atomspace_logs:
   csv_cache:
+  mongo_data:
+  redis_data:
 
 networks:
   neurograph-network:

@@ -1,135 +1,137 @@
-# NeuroGraph AI Assistant - Complete Setup & Usage Guide
+# NeuroGraph AI Assistant
 
-## Project Overview
+The **NeuroGraph AI Assistant** is a comprehensive platform designed for advanced graph processing, neural pattern mining, and interactive knowledge graph exploration. It integrates multiple specialized services to transform raw data into actionable insights through a unified pipeline.
 
-The NeuroGraph AI Assistant is a **two-step pipeline** for discovering patterns and motifs in graph data:
+## System Architecture
 
-1.  **Step 1: Generate Graph** - Upload CSV files and generate a NetworkX graph (returns `job_id`).
-2.  **Step 2: Mine Patterns** - Use the `job_id` to discover patterns with custom configuration.
+The system is composed of:
 
-### System Components
+*   **Integration Service**: The central orchestrator that manages workflows, streams data between services, and provides a unified REST API for the frontend.
+*   **Custom AtomSpace Builder**: A powerful graph processing engine that ingests CSV/JSON data and transforms it into NetworkX graphs, MeTTa formats, or Neo4j databases.
+*   **Neural Subgraph Miner**: A specialized mining engine that uses neural search strategies (Greedy, MCTS) to discover frequent patterns and motifs within the generated graphs.
+*   **Annotation Tool (Frontend)**: A modern, interactive React/Remix web interface for uploading data, visualizing Knowledge Graphs (KG), running mining jobs, and exploring results.
+*   **Annotation Query Backend**: A supporting backend service that handles graph queries and history management for the visualization tool.
 
--   **Custom AtomSpace Builder**: Converts CSV data into NetworkX graphs.
--   **Neural Subgraph Miner**: Discovers motifs and patterns.
--   **Integration Service**: Orchestrates the workflow and provides REST APIs.
+## Features
 
----
+### Core Capabilities
+*   **End-to-End Pipeline**: A seamless workflow from raw CSV upload to visualized graph patterns.
+*   **Neural Mining**: Advanced subgraph mining using neural networks to guide the search for significant motifs.
+*   **Interactive Visualization**: Explore your Knowledge Graph (KG) with an interactive, node-link diagram interface.
+*   **Multi-Format Support**: Generate outputs in NetworkX, MeTTa, and Neo4j formats.
+*   **Job Management**: Track and manage your data ingestion and mining jobs with persistent history.
 
-##  Complete Setup Instructions (Step-by-Step)
+### Frontend Experience
+*   **Data Import**: Easy-to-use drag-and-drop interface for uploading CSV nodes and edges.
+*   **Graph Exploration**: Visualizers for graph schema, top entities, and connectivity stats.
+*   **Mining Configuration**: Fine-grained control over mining parameters (Pattern Size, Search Strategy, Sampling Method).
+*   **Results Dashboard**: Downloadable reports and visualized mining outcomes.
 
-Follow these steps precisely to set up the system on a new server or local machine.
+## Installation & Setup
 
-### Prerequisites
--   **Docker** and **Docker Compose** installed.
--   **Git** installed.
+### 1. Clone the Repository
 
-### Step 1: Clone the Repository
-Clone the repository and ensure submodules are downloaded.
+Clone the repository and ensure all submodules are initialized.
 
 ```bash
-# Clone the main repository
-git clone https://github.com/NeuroGraph-AI-Assistant.git
+git clone https://github.com/Samrawitgebremaryam/NeuroGraph-AI-Assistant.git
 cd NeuroGraph-AI-Assistant
 
-# Initialize and update submodules (CRITICAL STEP)
+# Initialize and update submodules
 git submodule update --init --recursive
 ```
 
-### Step 2: Configure Environment Variables
-The system uses a **single configuration file** in the root directory.
-
-1.  Copy the example `env` file:
-    ```bash
-    cp .env.example .env
-    ```
-
-2.  Open `.env` in a text editor (e.g., `nano .env`) and set your keys:
-    *   **LLM_API_KEY**: Your OpenAI or Anthropic key.
-    *   **NEO4J_PASSWORD**: Default is `atomspace123`.
-    *   **(Optional) Ports**: Change `ATOMSPACE_PORT` here if port 8000 is busy.
+2. **Configure environment variables:**
+   ```bash
+   cp .env.example .env
+   ```
    
+   Edit `.env` and set your Neo4j password (optional, defaults work fine):
+   ```bash
+   NEO4J_PASSWORD=your_secure_password
+   ```
 
-### Step 3: Prepare Submodule Build (Build Fix)
-*Note: The AtomSpace Builder requires a local `.env` file to exist during the build process.*
+3. **Start the entire stack (Backend + Frontend + Databases):**
+   ```bash
+   docker-compose up --build
+   ```
+   
+   *Note: The first build may take 5-10 minutes as it compiles all services.*
 
-Run this command to create the necessary dummy file:
+4. **Access the application:**
+   - **Frontend Dashboard**: [http://localhost:3000](http://localhost:3000)
+   - **Integration API**: [http://localhost:9000/docs](http://localhost:9000/docs)
+   - **Neo4j Browser**: [http://localhost:7474](http://localhost:7474)
+
+### Alternative: Local Frontend Development
+
+If you want to develop the frontend locally (with hot-reload) while keeping the backend in Docker:
+
+1. **Start only the backend services:**
+   ```bash
+   docker-compose up neo4j hugegraph atomspace-api-dev neural-miner integration-service annotation-backend mongodb redis
+   ```
+
+2. **Run the frontend locally:**
+   ```bash
+   cd submodules/annotation-tool
+   cp .env.example .env  # Only needed first time
+   npm install
+   npm run dev
+   ```
+   
+   The frontend will be available at [http://localhost:5173](http://localhost:5173) (Vite dev server).
+
+## Usage
+
+### Accessing the Application
+
+Once all services are up (check with `docker-compose ps`), access the web interface:
+
+*   **Frontend Dashboard**: [http://localhost:3000](http://localhost:3000)
+    *   Navigate here to start importing data and running mining jobs.
+
+### Typical Workflow
+
+1.  **Import Data**:
+    *   Go to the **Import** page.
+    *   Upload your Nodes CSV and Edges CSV.
+    *   Submit to generate the graph.
+2.  **View Statistics**:
+    *   Once generated, you'll see a dashboard with Graph Statistics (Node counts, Edge counts, Schema).
+    *   **Copy the Job ID** from the success card.
+3.  **Mine Patterns**:
+    *   Go to the **Mine** page.
+    *   Paste the Job ID.
+    *   Configure mining parameters (e.g., Min Pattern Size=3, Strategy=Greedy).
+    *   Click "Start Mining".
+4.  **Analyze Results**:
+    *   Download the results ZIP file containing the mined patterns and instances.
+
+## Service Endpoints
+
+*   **Integration API**: [http://localhost:9000/docs](http://localhost:9000/docs) (Swagger UI)
+*   **AtomSpace Builder API**: [http://localhost:8000/docs](http://localhost:8000/docs)
+*   **Annotation Backend**: [http://localhost:8001](http://localhost:8001)
+*   **Neo4j Browser**: [http://localhost:7474](http://localhost:7474) (User: `neo4j`, Pass: `atomspace123`)
+
+## Troubleshooting
+
+### Common Issues
+
+*   **"Frontend cannot connect to backend"**: Ensure you created the `.env` file in `submodules/annotation-tool` and that the URLs point to the correct ports exposed by Docker.
+*   **"Container exited with code 1"**: Check logs using `dockerlogs <container_name>`.
+*   **"Submodule not found"**: Run `git submodule update --init --recursive` again.
+
+### Useful Commands
 
 ```bash
-# Create a dummy .env file for the submodule build
-cp .env.example submodules/custom-atomspace-builder/.env
-```
+# View logs for all services
+docker-compose logs -f
 
-### Step 4: Build and Start the System
-Run the unified Docker Compose command.
+# Restart a specific service
+docker-compose restart integration-service
 
-```bash
-# Build and start in detached mode (background)
-docker compose up --build -d
-```
-
-### Step 5: Verify Services
-Check the status of the containers:
-```bash
-docker compose ps
-```
-**Expected Output:** All 5 services (integration-service, neural-miner, atomspace-api, neo4j, hugegraph) should be "Up".
-
----
-
-## Troubleshooting & Common Errors
-
-### 1. Error 500: "Name or service not known" (Annotation Service)
-**Issue:** The system defaults to looking for an optional "Annotation Service" that doesn't exist.
-**Fix:**
-Edit your `.env` file and make sure `ANNOTATION_SERVICE_URL` is empty.
-```bash
-# Correct:
-ANNOTATION_SERVICE_URL=
-# Incorrect:
-ANNOTATION_SERVICE_URL=http://annotation-service:6000
-```
-Then restart: `docker compose up -d`
-
-### 2. Error: "Bind for 0.0.0.0:8000 failed" (Port Conflict)
-**Issue:** Port 8000 is already used by another application (or an old version of this app).
-**Fix:**
-*   **Option A (Kill Old Process):** Run `sudo lsof -i :8000` to find the PID, then `sudo kill -9 <PID>`.
-*   **Option B (Change Port):** Edit `.env` and set `ATOMSPACE_PORT=8001`.
-
-### 3. Error: "Conflict. The container name ... is already in use"
-**Issue:** Old containers from manual runs are blocking the new ones.
-**Fix (The Nuclear Option):**
-```bash
-docker rm -f $(docker ps -aq)
-docker compose up --build -d
-```
-
----
-
-##  API Guidelines
-
-**Base URL:** `http://localhost:9000`
-
-### 1️ Step 1: Generate Graph
-**Endpoint:** `POST /api/generate-graph`
-Upload your CSV files to create a graph.
-
-```bash
-curl -X POST "http://localhost:9000/api/generate-graph" \
-  -F "files=@nodes.csv" \
-  -F "files=@edges.csv" \
-  -F "config=$(cat config.json)" \
-  -F "schema_json=$(cat schema.json)" \
-  -F "writer_type=networkx" \
-  -F "graph_type=directed"
-```
-
-### 2️ Step 2: Mine Patterns
-**Endpoint:** `POST /api/mine-patterns`
-Use the `job_id` from Step 1.
-
-```bash
-curl -X POST "http://localhost:9000/api/mine-patterns" \
-  -F "job_id=abc-123" \
-  -F "min_pattern_size=3"
+# Rebuild a specific service
+docker-compose up -d --build --no-deps annotation-frontend
 ```
