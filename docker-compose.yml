@@ -2,6 +2,29 @@ version: '3.8'
 
 services:
   # --- Custom Atomspace Builder Services ---
+  annotation-tool:
+    build:
+      context: ./submodules/annotation-tool
+      dockerfile: dockerfile
+    container_name: annotation-tool
+    ports:
+      - "3000:3000"
+    environment:
+      # Internal URLs for SSR (Server-to-Server)
+      - ANNOTATION_URL=http://annotation-backend:8000
+      - LOADER_URL=http://integration-service:9000
+      - INTEGRATION_URL=http://integration-service:9000
+      # Public URLs for the Browser (Client-to-Server)
+      - PUBLIC_ANNOTATION_URL=http://localhost:8001
+      - PUBLIC_LOADER_URL=http://localhost:9000
+      - PUBLIC_INTEGRATION_URL=http://localhost:9000
+    depends_on:
+      - annotation-backend
+      - integration-service
+    networks:
+      - neurograph-network
+    restart: always
+
   neo4j:
     image: neo4j:5.15-community
     container_name: neo4j-atomspace
