@@ -5,7 +5,8 @@ import httpx
 import tempfile  
 import shutil
 import json
-from typing import Dict, Any, List  
+import asyncio
+from typing import Dict, Any, List, Optional  
 from .miner_service import MinerService  
 from ..config.settings import settings  
   
