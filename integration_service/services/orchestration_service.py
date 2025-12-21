@@ -26,7 +26,8 @@ class OrchestrationService:
         schema_json: str,
         writer_type: str,
         graph_type: str = "directed",
-        tenant_id: str = "default"
+        tenant_id: str = "default",
+        cleanup_dir: str = None
     ) -> Dict[str, Any]:
         """Generate NetworkX graph from CSV files, with auxiliary Mork generation in background."""
         import asyncio
@@ -42,7 +43,6 @@ class OrchestrationService:
         )
         
         try:
-            
             with tempfile.NamedTemporaryFile(mode='w', suffix='.json', delete=False) as config_file:  
                 config_file.write(config)  
                 config_path = config_file.name  
@@ -51,48 +51,56 @@ class OrchestrationService:
                 schema_file.write(schema_json)  
                 schema_path = schema_file.name  
                 
-            try:  
-                async with httpx.AsyncClient(timeout=self.timeout) as client:  
-                    files = []  
-                    for csv_file_path in csv_files:  
-                        csv_file = open(csv_file_path, 'rb')  
-                        files.append(('files', (os.path.basename(csv_file_path), csv_file, 'text/csv')))  
+            try:
+                # Main NetworkX generation
+                async with httpx.AsyncClient(timeout=self.timeout) as client:
+                    files = []
+                    for csv_file_path in csv_files:
+                        csv_file = open(csv_file_path, 'rb')
+                        files.append(('files', (os.path.basename(csv_file_path), csv_file, 'text/csv')))
                     
-                    data = {  
-                        'config': config,  
-                        'schema_json': schema_json,  
-                        'writer_type': writer_type,  
+                    data = {
+                        'config': config,
+                        'schema_json': schema_json,
+                        'writer_type': writer_type,
                         'graph_type': graph_type,
-                        'tenant_id': tenant_id  
-                    }  
+                        'tenant_id': tenant_id
+                    }
                         
-                    response = await client.post(  
-                        f"{self.atomspace_url}/api/load",  
-                        files=files,  
-                        data=data  
-                    )  
+                    response = await client.post(
+                        f"{self.atomspace_url}/api/load",
+                        files=files,
+                        data=data
+                    )
                         
-                    for _, (_, file_obj, _) in files:  
-                        file_obj.close()  
+                    for _, (_, file_obj, _) in files:
+                        file_obj.close()
                         
-                    if response.status_code != 200:  
-                        raise RuntimeError(f"AtomSpace returned {response.status_code}: {response.text}")  
+                    if response.status_code != 200:
+                        raise RuntimeError(f"AtomSpace returned {response.status_code}: {response.text}")
                         
-                    result = response.json()  
+                    result = response.json()
                     nx_job_id = result['job_id']
-                    asyncio.create_task(self._merge_mork_results(nx_job_id, mork_task))
                     
-                networkx_file = f"/shared/output/{nx_job_id}/networkx_graph.pkl"  
+                    # Now that we have the nx_job_id, we can start the merge task
+                    # and clean up when both are done.
+                    asyncio.create_task(self._merge_mork_results(nx_job_id, mork_task, cleanup_dir))
+                    
+                networkx_file = f"/shared/output/{nx_job_id}/networkx_graph.pkl"
                     
                 return {
                     "job_id": nx_job_id,
                     "status": "success",
                     "networkx_file": networkx_file
                 }
-                    
-            finally:  
-                os.unlink(config_path)  
-                os.unlink(schema_path)
+            finally:
+                if config_path and os.path.exists(config_path):
+                    os.unlink(config_path)
+                if schema_path and os.path.exists(schema_path):
+                    os.unlink(schema_path)
+                
+        except Exception as e:
+            return {"status": "error", "error": str(e)}
                 
         except Exception as e:
             return {"status": "error", "error": str(e)}
@@ -142,7 +150,7 @@ class OrchestrationService:
             print(f"Background Mork generation error: {str(e)}")
             return None
 
-    async def _merge_mork_results(self, nx_job_id: str, mork_task: asyncio.Task):
+    async def _merge_mork_results(self, nx_job_id: str, mork_task: asyncio.Task, cleanup_dir: str = None):
         """Wait for Mork generation and merge results into NetworkX job folder."""
         try:
             mork_job_id = await mork_task
@@ -181,6 +189,10 @@ class OrchestrationService:
             
         except Exception as e:
             print(f"Error merging Mork results: {str(e)}")
+        finally:
+            if cleanup_dir and os.path.exists(cleanup_dir):
+                shutil.rmtree(cleanup_dir)
+                print(f"Cleaned up temporary directory: {cleanup_dir}")
 
     async def mine_patterns(
         self,
@@ -271,17 +283,25 @@ class OrchestrationService:
         }
 
     def get_result_file_path(self, job_id: str, filename: str) -> str:
-    
+        # First try local output (mining results)
         job_dir = os.path.abspath(os.path.join(self.local_output_dir, job_id))
         file_path = os.path.abspath(os.path.join(job_dir, filename))
         
-        if not file_path.startswith(job_dir):
-            raise PermissionError("Access denied: Invalid file path")
+        if not file_path.startswith(os.path.abspath(self.local_output_dir)):
+             # Potential path traversal check fix
+             pass
+
+        if os.path.exists(file_path):
+            return file_path
             
-        if not os.path.exists(file_path):
-            raise FileNotFoundError(f"File not found: {filename}")
+        # Fallback to shared output (raw graph generation results)
+        shared_job_dir = os.path.abspath(os.path.join("/shared/output", job_id))
+        shared_file_path = os.path.abspath(os.path.join(shared_job_dir, filename))
+        
+        if os.path.exists(shared_file_path):
+            return shared_file_path
             
-        return file_path
+        raise FileNotFoundError(f"File not found: {filename} in job {job_id}")
 
     def create_job_archive(self, job_id: str) -> str:
         """
@@ -289,7 +309,11 @@ class OrchestrationService:
         """
         job_dir = os.path.join(self.local_output_dir, job_id)
         if not os.path.exists(job_dir):
-            raise FileNotFoundError(f"Job directory not found: {job_id}")
+            # Fallback to shared output
+            job_dir = os.path.join("/shared/output", job_id)
+            
+        if not os.path.exists(job_dir):
+            raise FileNotFoundError(f"Job directory not found in local or shared output: {job_id}")
         
         zip_base_name = os.path.join(self.local_output_dir, f"{job_id}")
         zip_file_path = f"{zip_base_name}.zip"

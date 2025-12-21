@@ -42,15 +42,17 @@ async def generate_graph(
             schema_json=schema_json,
             writer_type=writer_type,
             graph_type=graph_type,
-            tenant_id="default"
+            tenant_id="default",
+            cleanup_dir=temp_dir
         )
           
         return result
           
-    finally:  
-        import shutil  
-        if os.path.exists(temp_dir):  
+    except Exception as e:
+        import shutil
+        if os.path.exists(temp_dir):
             shutil.rmtree(temp_dir)
+        raise e
 
 @router.post("/mine-patterns")
 async def mine_patterns(

@@ -7,6 +7,12 @@
 [submodule "submodules/annotation-tool"]
 	path = submodules/annotation-tool
 	url = https://github.com/rejuve-bio/annotation-tool.git
+
 [submodule "submodules/annotation-query-backend-general"]
 	path = submodules/annotation-query-backend-general
 	url = https://github.com/rejuve-bio/annotation-query-backend-general.git
+	branch = feature/mork-support
+[submodule "submodules/MORK"]
+	path = submodules/MORK
+	url = https://github.com/DeazStar/MORK.git
+	branch = server
