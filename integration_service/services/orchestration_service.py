@@ -5,7 +5,8 @@ import httpx
 import tempfile  
 import shutil
 import json
-from typing import Dict, Any, List  
+import asyncio
+from typing import Dict, Any, List, Optional  
 from .miner_service import MinerService  
 from ..config.settings import settings  
   
@@ -27,9 +28,20 @@ class OrchestrationService:
         graph_type: str = "directed",
         tenant_id: str = "default"
     ) -> Dict[str, Any]:
-        """Generate NetworkX graph from CSV files."""
+        """Generate NetworkX graph from CSV files, with auxiliary Mork generation in background."""
+        import asyncio
+        
+        mork_task = asyncio.create_task(
+            self._generate_auxiliary_mork(
+                csv_files,
+                config,
+                schema_json,
+                graph_type,
+                tenant_id
+            )
+        )
+        
         try:
-            job_id = str(uuid.uuid4())
             
             with tempfile.NamedTemporaryFile(mode='w', suffix='.json', delete=False) as config_file:  
                 config_file.write(config)  
@@ -67,11 +79,13 @@ class OrchestrationService:
                         raise RuntimeError(f"AtomSpace returned {response.status_code}: {response.text}")  
                         
                     result = response.json()  
+                    nx_job_id = result['job_id']
+                    asyncio.create_task(self._merge_mork_results(nx_job_id, mork_task))
                     
-                networkx_file = f"/shared/output/{result['job_id']}/networkx_graph.pkl"  
+                networkx_file = f"/shared/output/{nx_job_id}/networkx_graph.pkl"  
                     
                 return {
-                    "job_id": result['job_id'],
+                    "job_id": nx_job_id,
                     "status": "success",
                     "networkx_file": networkx_file
                 }
@@ -82,7 +96,92 @@ class OrchestrationService:
                 
         except Exception as e:
             return {"status": "error", "error": str(e)}
-    
+
+    async def _generate_auxiliary_mork(
+        self,
+        csv_files: List[str],
+        config: str,
+        schema_json: str,
+        graph_type: str,
+        tenant_id: str
+    ) -> Optional[str]:
+        try:
+            async with httpx.AsyncClient(timeout=self.timeout) as client:
+                files = []
+                for csv_file_path in csv_files:
+                    csv_file = open(csv_file_path, 'rb')
+                    files.append(('files', (os.path.basename(csv_file_path), csv_file, 'text/csv')))
+                
+                data = {
+                    'config': config,
+                    'schema_json': schema_json,
+                    'writer_type': 'mork', 
+                    'graph_type': graph_type,
+                    'tenant_id': tenant_id
+                }
+                
+                response = await client.post(
+                    f"{self.atomspace_url}/api/load",
+                    files=files,
+                    data=data
+                )
+                
+                for _, (_, file_obj, _) in files:
+                    file_obj.close()
+                    
+                if response.status_code == 200:
+                    result = response.json()
+                    mork_job_id = result.get('job_id')
+                    print(f"Background Mork generation successful. ID: {mork_job_id}")
+                    return mork_job_id
+                else:
+                    print(f"Background Mork generation failed: {response.text}")
+                    return None
+                    
+        except Exception as e:
+            print(f"Background Mork generation error: {str(e)}")
+            return None
+
+    async def _merge_mork_results(self, nx_job_id: str, mork_task: asyncio.Task):
+        """Wait for Mork generation and merge results into NetworkX job folder."""
+        try:
+            mork_job_id = await mork_task
+            
+            if not mork_job_id:
+                print(f"Skipping merge for {nx_job_id} because Mork generation failed or returned no ID.")
+                return
+
+            mork_dir = f"/shared/output/{mork_job_id}"
+            nx_dir = f"/shared/output/{nx_job_id}"
+            
+            if not os.path.exists(mork_dir):
+                print(f"Mork output directory not found: {mork_dir}")
+                return
+                
+            if not os.path.exists(nx_dir):
+                print(f"NetworkX output directory not found: {nx_dir}")
+                return
+
+            mork_subdir = os.path.join(nx_dir, "mork")
+            os.makedirs(mork_subdir, exist_ok=True)
+
+            for filename in os.listdir(mork_dir):
+                src_path = os.path.join(mork_dir, filename)
+                
+                if filename in ["schema.json", "neo4j_load_result.json"]:
+                    continue
+                
+                dst_path = os.path.join(mork_subdir, filename)
+                
+                if os.path.isfile(src_path):
+                    shutil.copy2(src_path, dst_path)
+            
+            shutil.rmtree(mork_dir)
+            print(f"Successfully merged Mork files from {mork_job_id} to {mork_subdir}")
+            
+        except Exception as e:
+            print(f"Error merging Mork results: {str(e)}")
+
     async def mine_patterns(
         self,
         job_id: str,
