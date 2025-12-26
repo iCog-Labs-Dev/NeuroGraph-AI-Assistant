@@ -219,11 +219,16 @@ class OrchestrationService:
             miner_config = mining_config.copy()
             miner_config['visualize_instances'] = visualize_instances
             
-            await self.miner_service.mine_motifs(
+            result = await self.miner_service.mine_motifs(
                 networkx_file,
                 job_id=job_id,
                 mining_config=miner_config
             )
+            
+            # Check if miner service result indicates failure (though mine_motifs usually raises exception)
+            # If we reached here, it should be success, but let's be safe
+            if isinstance(result, dict) and result.get('status') == 'error':
+                 raise RuntimeError(f"Mining failed: {result.get('error', 'Unknown error')}")
             
             local_paths = self._copy_to_local_output(job_id)
             
@@ -236,7 +241,10 @@ class OrchestrationService:
                 "download_url": download_url
             }
         except Exception as e:
-            return {"status": "error", "error": str(e)}
+            # Re-raise the exception so it propagates as HTTP 500 (or handled by caller)
+            # instead of returning a 200 OK with {"status": "error"}
+            print(f"Error in mine_patterns: {e}")
+            raise e
     
     async def get_graph_type_from_metadata(self, job_id: str) -> str:
         """Read graph_type from networkx_metadata.json"""
@@ -314,27 +322,47 @@ class OrchestrationService:
 
     def create_job_archive(self, job_id: str) -> str:
         """ 
-        Create a zip archive of the entire job directory.
+        Create a zip archive of the job results (strictly 'results' and 'plots').
         """
         local_job_dir = os.path.join(self.local_output_dir, job_id)
         shared_job_dir = os.path.join("/shared/output", job_id)
         
-        # Determine which directory to use
-        # If local exists but is missing results, prefer shared
-        job_dir = local_job_dir
-        if not os.path.exists(local_job_dir) or not os.path.exists(os.path.join(local_job_dir, "results")):
-            if os.path.exists(shared_job_dir):
-                job_dir = shared_job_dir
-            else:
-                # If shared also doesn't exist, we use local_job_dir for the error reporting
-                job_dir = local_job_dir
+        # Determine base source directories
+        # We prefer the shared directory for source as it's the sync point, but check local if needed
+        # Actually, for results to download, we should look for where they exist.
+        
+        source_results = None
+        source_plots = None
+        
+        # Check local first
+        if os.path.exists(os.path.join(local_job_dir, "results")):
+            source_results = os.path.join(local_job_dir, "results")
+        elif os.path.exists(os.path.join(shared_job_dir, "results")):
+            source_results = os.path.join(shared_job_dir, "results")
+            
+        if os.path.exists(os.path.join(local_job_dir, "plots")):
+            source_plots = os.path.join(local_job_dir, "plots")
+        elif os.path.exists(os.path.join(shared_job_dir, "plots")):
+            source_plots = os.path.join(shared_job_dir, "plots")
+            
+        if not source_results and not source_plots:
+             raise FileNotFoundError(f"No results or plots found for job: {job_id}")
 
-        if not os.path.exists(job_dir):
-            raise FileNotFoundError(f"Job directory not found in local or shared output: {job_id}")
-        
-        zip_base_name = os.path.join(self.local_output_dir, f"{job_id}")
-        zip_file_path = f"{zip_base_name}.zip"
-        
-        shutil.make_archive(zip_base_name, 'zip', job_dir)
-        
+        # Create a temporary staging directory to zip from
+        with tempfile.TemporaryDirectory() as temp_stage:
+            # Copy results if they exist
+            if source_results:
+                shutil.copytree(source_results, os.path.join(temp_stage, "results"))
+            
+            # Copy plots if they exist
+            if source_plots:
+                shutil.copytree(source_plots, os.path.join(temp_stage, "plots"))
+                
+            # Create zip name
+            zip_base_name = os.path.join(self.local_output_dir, f"{job_id}")
+            zip_file_path = f"{zip_base_name}.zip"
+            
+            # Create archive from temp_stage
+            shutil.make_archive(zip_base_name, 'zip', temp_stage)
+            
         return zip_file_path

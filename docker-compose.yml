@@ -174,14 +174,14 @@ services:
 
   # --- Integration Service ---
   integration-service:
-    image: tarikua123/intergater
+    image: tarikua123/mine-integrate
     container_name: neurograph-ai-assistant-integration-service
     ports:
       - "${INTEGRATION_API_PORT:-9000}:9000"
     environment:
       - API_PORT=9000
       - ATOMSPACE_API_URL=http://atomspace-api:${API_PORT:-8000}
-      - NEURAL_MINER_URL=http://neural-miner:5000
+      - NEURAL_MINER_URL=http://neural-miner:9002
       - ANNOTATION_SERVICE_URL=http://annotation_service:${APP_PORT:-8001}
       - ATOMSPACE_TIMEOUT=${ATOMSPACE_TIMEOUT:-600}
       - MINER_TIMEOUT=${MINER_TIMEOUT:-1800}
@@ -201,14 +201,17 @@ services:
 
   # --- Neural Subgraph Matcher Miner ---
   neural-miner:
-    image: tarikua123/new-neural-subgraph
+    image: tarikua123/neural-subgraph
     container_name: neurograph-ai-assistant-neural-miner
     volumes:
       - ./custom-atomspace-builder/output:/shared/output
+    ports:
+      - "9002:9002"
     networks:
       - atomspace-network
     environment:
       - GEMINI_API_KEY=${GEMINI_API_KEY}
+    command: python3 -m app.main
     restart: always
 
 volumes:
