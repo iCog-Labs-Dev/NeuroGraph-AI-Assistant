@@ -8,7 +8,7 @@ The system is composed of:
 
 *   **Integration Service**: The central orchestrator that manages workflows, streams data between services, and provides a unified REST API for the frontend.
 *   **Custom AtomSpace Builder**: A powerful graph processing engine that ingests CSV/JSON data and transforms it into NetworkX graphs, MeTTa formats, or Neo4j databases.
-*   **Neural Subgraph Miner**: A specialized mining engine that uses neural search strategies (Greedy, MCTS) to discover frequent patterns and motifs within the generated graphs and get LLM-powered interpretation of the motifs.
+*   **Neural Subgraph Miner**: A specialized mining engine that uses neural search strategies (Greedy, MCTS) to discover frequent patterns within the generated graphs and get LLM-powered interpretation of the motifs.
 *   **Annotation Tool (Frontend)**: A modern, interactive React/Remix web interface for uploading data, visualizing Knowledge Graphs (KG), running mining jobs, and exploring results.
 *   **Annotation Query Backend**: A supporting backend service that handles graph queries and history management for the visualization tool.
 
