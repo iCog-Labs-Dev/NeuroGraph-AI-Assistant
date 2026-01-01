@@ -15,7 +15,7 @@ The system is composed of:
 ## Features
 
 ### Core Capabilities
-*   **End-to-End Pipeline**: A seamless workflow from raw CSV upload to visualized graph patterns and getting LLM-powered interpretation.
+*   **End-to-End Pipeline**: A seamless workflow from raw CSV upload to visualized graph patterns and getting LLM-powered interpretation of the frequent patterns.
 *   **Neural Mining**: Advanced subgraph mining using neural networks to guide the search for significant motifs.
 *   **Interactive Visualization**: Explore your Knowledge Graph (KG) with an interactive, node-link diagram interface.
 *   **Multi-Format Support**: Generate outputs in NetworkX, MeTTa, and Neo4j formats.
