@@ -68,7 +68,7 @@ Once the containers are active, access the **Frontend Dashboard** at [http://loc
 2. Upload your **Nodes CSV** and **Edges CSV** files.
 3. Select **NetworkX** as the target format.
 4. The system will automatically generate the graph in **MORK format** in the background. 
-5. Provide a name for your file and save it; the system handles job tracking automatically without requiring manual ID management.
+5. Provide a name for your file and save it, the system handles job tracking automatically without requiring manual ID management.
 
 ### 3. Graph Analytics
 Upon successful ingestion, the interface will automatically transition to the **Analytics View**. Here, you can explore:
