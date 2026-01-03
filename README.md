@@ -15,7 +15,7 @@ The system is composed of:
 ## Features
 
 ### Core Capabilities
-*   **End-to-End Pipeline**: A seamless workflow from raw CSV upload to visualized graph patterns.
+*   **End-to-End Pipeline**: A seamless workflow from raw CSV upload to visualized graph patterns,getting their insights.
 *   **Neural Mining**: Advanced subgraph mining using neural networks to guide the search for significant motifs.
 *   **Interactive Visualization**: Explore your Knowledge Graph (KG) with an interactive, node-link diagram interface.
 *   **Multi-Format Support**: Generate outputs in NetworkX, MeTTa, and Neo4j formats.
@@ -34,7 +34,7 @@ The system is composed of:
 Clone the repository and ensure all submodules are initialized.
 
 ```bash
-git clone https://github.com/Samrawitgebremaryam/NeuroGraph-AI-Assistant.git
+git clone https://github.com/kedistS/NeuroGraph-AI-Assistant.git
 cd NeuroGraph-AI-Assistant
 
 # Initialize and update submodules
@@ -51,75 +51,67 @@ git submodule update --init --recursive
    NEO4J_PASSWORD=your_secure_password
    ```
 
-3. **Start the entire stack (Backend + Frontend + Databases):**
-   ```bash
-   docker-compose up --build
-   ```
-   
-   *Note: The first build may take 5-10 minutes as it compiles all services.*
 
-4. **Access the application:**
-   - **Frontend Dashboard**: [http://localhost:3000](http://localhost:3000)
-   - **Integration API**: [http://localhost:9000/docs](http://localhost:9000/docs)
-   - **Neo4j Browser**: [http://localhost:7474](http://localhost:7474)
+## Usage: End-to-End Pipeline Guide
 
-### Alternative: Local Frontend Development
+This section describes the standard workflow for processing data and exploring graph motifs through the NeuroGraph AI Assistant.
 
-If you want to develop the frontend locally (with hot-reload) while keeping the backend in Docker:
+### 1. System Initialization
+Start all core services and databases using Docker Compose:
+```bash
+docker-compose up --build
+```
+Once the containers are active, access the **Frontend Dashboard** at [http://localhost:3000](http://localhost:3000).
 
-1. **Start only the backend services:**
-   ```bash
-   docker-compose up neo4j hugegraph atomspace-api-dev neural-miner integration-service annotation-backend mongodb redis
-   ```
+### 2. Data Ingestion & Transformation
+1. Navigate to the **Import** page.
+2. Upload your **Nodes CSV** and **Edges CSV** files.
+3. Select **NetworkX** as the target format.
+4. The system will automatically generate the graph in **MORK format** in the background. 
+5. Provide a name for your file and save it; the system handles job tracking automatically without requiring manual ID management.
 
-2. **Run the frontend locally:**
-   ```bash
-   cd submodules/annotation-tool
-   cp .env.example .env  # Only needed first time
-   npm install
-   npm run dev
-   ```
-   
-   The frontend will be available at [http://localhost:5173](http://localhost:5173) (Vite dev server).
+### 3. Graph Analytics
+Upon successful ingestion, the interface will automatically transition to the **Analytics View**. Here, you can explore:
+*   Graph connectivity and density statistics.
+*   Node and edge type distributions.
+*   Schema visualizations for the uploaded Knowledge Graph.
 
-## Usage
+### 4. Neural Motif Mining
+1. From the analytics dashboard, click on **Mine Patterns**.
+2. Configure your mining parameters (e.g., search strategy, pattern size).
+3. The neural engine will discover frequent motifs and generate downloadable results.
 
-### Accessing the Application
+### 5. AI-Powered Motif Interpretation
+1. Download the mining results and open the interactive **HTML plots**.
+2. Within the plot interface, provide your **Gemini API Key** to enable the **Instance-Aware Interpreter**.
+3. Interact with the chat interface to receive structural insights and expert-level explanations for specific motifs.
 
-Once all services are up (check with `docker-compose ps`), access the web interface:
+### 6. Advanced Annotation Workflow
+1. Navigate from the plots to the **Annotation Service** by clicking the **Annotation** button.
+2. Build sophisticated queries for your data (since the MORK format is already generated and cached).
+3. Use the **Upload** button to add specific files needed for your targeted annotation tasks.
 
-*   **Frontend Dashboard**: [http://localhost:3000](http://localhost:3000)
-    *   Navigate here to start importing data and running mining jobs.
+---
 
-### Typical Workflow
+## Service Documentation & API Access
 
-1.  **Import Data**:
-    *   Go to the **Import** page.
-    *   Upload your Nodes CSV and Edges CSV.
-    *   Submit to generate the graph.
-2.  **View Statistics**:
-    *   Once generated, you'll see a dashboard with Graph Statistics (Node counts, Edge counts, Schema).
-    *   **Copy the Job ID** from the success card.
-3.  **Mine Patterns**:
-    *   Go to the **Mine** page.
-    *   Paste the Job ID.
-    *   Configure mining parameters (e.g., Min Pattern Size=3, Strategy=Greedy).
-    *   Click "Start Mining".
-4.  **Analyze Results**:
-    *   Download the results ZIP file containing the mined patterns and instances.
+For developers and advanced users, all services expose RESTful APIs and interactive documentation.
 
-## Service Endpoints
+### Core Service Endpoints
+| Service | Host URL | Documentation (Swagger/UI) | Purpose |
+| :--- | :--- | :--- | :--- |
+| **Integration Service** | [http://localhost:9000](http://localhost:9000) | [/docs](http://localhost:9000/docs) | Orchestration & Unified API |
+| **AtomSpace Builder** | [http://localhost:8000](http://localhost:8000) | [/docs](http://localhost:8000/docs) | Data Ingestion & MeTTa Conversion |
+| **Annotation Backend** | [http://localhost:8001](http://localhost:8001) | N/A | Query Management |
+| **Neo4j DB** | [http://localhost:7474](http://localhost:7474) | [Browser interface](http://localhost:7474) | Graph Storage & Exploration |
 
-*   **Integration API**: [http://localhost:9000/docs](http://localhost:9000/docs) (Swagger UI)
-*   **AtomSpace Builder API**: [http://localhost:8000/docs](http://localhost:8000/docs)
-*   **Annotation Backend**: [http://localhost:8001](http://localhost:8001)
-*   **Neo4j Browser**: [http://localhost:7474](http://localhost:7474) (User: `neo4j`, Pass: `atomspace123`)
+### Interacting with APIs
+You can use the **Integration API Swagger UI** to trigger pipeline steps programmatically or to check the status of active processes across the entire stack.
 
 ## Troubleshooting
 
 ### Common Issues
 
-*   **"Frontend cannot connect to backend"**: Ensure you created the `.env` file in `submodules/annotation-tool` and that the URLs point to the correct ports exposed by Docker.
 *   **"Container exited with code 1"**: Check logs using `dockerlogs <container_name>`.
 *   **"Submodule not found"**: Run `git submodule update --init --recursive` again.
 
@@ -133,5 +125,5 @@ docker-compose logs -f
 docker-compose restart integration-service
 
 # Rebuild a specific service
-docker-compose up -d --build --no-deps annotation-frontend
+docker-compose up -d --build --no-deps annotation-tool
 ```

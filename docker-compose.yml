@@ -203,6 +203,8 @@ services:
     container_name: neurograph-ai-assistant-neural-miner
     volumes:
       - ./custom-atomspace-builder/output:/shared/output
+      - ./submodules/neural-subgraph-matcher-miner/results:/app/results
+      - ./submodules/neural-subgraph-matcher-miner/plots:/app/plots
     ports:
       - "9002:9002"
     networks:
