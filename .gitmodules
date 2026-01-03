@@ -15,7 +15,7 @@
 [submodule "submodules/annotation-query-backend-general"]
 	path = submodules/annotation-query-backend-general
 	url = https://github.com/tarikuamisganaw/annotation-query-backend.git
-	branch = fixed-networkx-mork-complex
+	branch = annotaion-integration
 
 [submodule "submodules/MORK"]
 	path = submodules/MORK
