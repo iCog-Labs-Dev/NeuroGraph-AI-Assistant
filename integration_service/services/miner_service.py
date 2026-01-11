@@ -52,6 +52,8 @@ class MinerService:
                 data['search_strategy'] = mining_config.get('search_strategy', 'greedy')
                 data['sample_method'] = mining_config.get('sample_method', 'tree')
                 data['visualize_instances'] = mining_config.get('visualize_instances', False)
+                if 'out_batch_size' in mining_config:
+                    data['out_batch_size'] = mining_config['out_batch_size']
                 
                 # Send to miner using HTTP client  
                 async with httpx.AsyncClient(timeout=self.timeout) as client:  

@@ -69,7 +69,8 @@ async def mine_patterns(
     graph_type: str = Form(None),
     search_strategy: str = Form("greedy"),
     sample_method: str = Form("tree"),
-    graph_output_format: str = Form("representative")
+    graph_output_format: str = Form("representative"),
+    out_batch_size: int = Form(3)
 ):
     """ Mine patterns from NetworkX graph with custom configuration."""
     
@@ -87,7 +88,8 @@ async def mine_patterns(
         'graph_type': graph_type,
         'search_strategy': search_strategy,
         'sample_method': sample_method,
-        'graph_output_format': graph_output_format
+        'graph_output_format': graph_output_format,
+        'out_batch_size': out_batch_size
     }
     
     result = await orchestration_service.mine_patterns(
