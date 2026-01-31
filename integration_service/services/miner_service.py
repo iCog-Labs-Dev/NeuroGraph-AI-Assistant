@@ -37,24 +37,31 @@ class MinerService:
                 with open(networkx_file_path, 'rb') as f:  
                     networkx_data = f.read()  
                   
+                # Build form data from user config only; send as strings so miner form parsing works
                 data = {}
                 if job_id:
-                    data['job_id'] = job_id
-                
-                data['min_pattern_size'] = mining_config.get('min_pattern_size', 5)
-                data['max_pattern_size'] = mining_config.get('max_pattern_size', 10)
-                data['min_neighborhood_size'] = mining_config.get('min_neighborhood_size', 5)
-                data['max_neighborhood_size'] = mining_config.get('max_neighborhood_size', 10)
-                data['n_neighborhoods'] = mining_config.get('n_neighborhoods', 2000)
-                data['n_trials'] = mining_config.get('n_trials', 100)
-                data['radius'] = mining_config.get('radius', 3)
-                data['graph_type'] = mining_config.get('graph_type', 'directed')
-                data['search_strategy'] = mining_config.get('search_strategy', 'greedy')
-                data['sample_method'] = mining_config.get('sample_method', 'tree')
-                data['visualize_instances'] = mining_config.get('visualize_instances', False)
-                if 'out_batch_size' in mining_config:
-                    data['out_batch_size'] = mining_config['out_batch_size']
-                
+                    data['job_id'] = str(job_id)
+                data['min_pattern_size'] = str(mining_config.get('min_pattern_size', 3))
+                data['max_pattern_size'] = str(mining_config.get('max_pattern_size', 5))
+                data['min_neighborhood_size'] = str(mining_config.get('min_neighborhood_size', 3))
+                data['max_neighborhood_size'] = str(mining_config.get('max_neighborhood_size', 7))
+                data['n_neighborhoods'] = str(mining_config.get('n_neighborhoods', 500))
+                data['n_trials'] = str(mining_config.get('n_trials', 100))
+                data['radius'] = str(mining_config.get('radius', 3))
+                data['graph_type'] = str(mining_config.get('graph_type', 'directed'))
+                data['search_strategy'] = str(mining_config.get('search_strategy', 'greedy'))
+                data['sample_method'] = str(mining_config.get('sample_method', 'tree'))
+                data['out_batch_size'] = str(mining_config.get('out_batch_size', 3))
+                data['visualize_instances'] = 'true' if mining_config.get('visualize_instances') else 'false'
+
+                # Debug: log what we send to the miner
+                print(
+                    f"DEBUG miner_service sending to miner: min_pattern_size={data.get('min_pattern_size')} "
+                    f"max_pattern_size={data.get('max_pattern_size')} out_batch_size={data.get('out_batch_size')} "
+                    f"visualize_instances={data.get('visualize_instances')}",
+                    flush=True
+                )
+
                 # Send to miner using HTTP client  
                 async with httpx.AsyncClient(timeout=self.timeout) as client:  
                     files = {'graph_file': ('graph.gpickle', networkx_data, 'application/octet-stream')}
