@@ -213,9 +213,10 @@ class OrchestrationService:
             if not os.path.exists(networkx_file):
                 raise FileNotFoundError(f"NetworkX file not found for job_id: {job_id}")
             
-            graph_output_format = mining_config.get('graph_output_format', 'representative')
+            # Normalize so "Instance"/"instance" and "Representative"/"representative" both work
+            graph_output_format = (mining_config.get('graph_output_format') or 'representative').strip().lower()
             visualize_instances = (graph_output_format == 'instance')
-            
+
             miner_config = mining_config.copy()
             miner_config['visualize_instances'] = visualize_instances
             
