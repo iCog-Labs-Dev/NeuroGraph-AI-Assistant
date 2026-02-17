@@ -233,13 +233,11 @@ class OrchestrationService:
             
             local_paths = self._copy_to_local_output(job_id)
             
-            download_url = f"http://localhost:9000/api/download-result?job_id={job_id}"
-            
+            # No download_url here — the frontend constructs it from window.ENV.INTEGRATION_URL
             return {
                 "job_id": job_id,
                 "status": "success",
-                "output_paths": local_paths,
-                "download_url": download_url
+                "output_paths": local_paths
             }
         except Exception as e:
             # Re-raise the exception so it propagates as HTTP 500 (or handled by caller)
